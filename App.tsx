@@ -1,3 +1,4 @@
+"use client";
 
 import React, { useState } from 'react';
 import { AppState, AppView, UserProfile, AnalysisResult, QuestionItem, MockRoundResult, MockSession } from './types';
@@ -7,10 +8,9 @@ import QuestionBank from './components/QuestionBank';
 import FavoritesView from './components/FavoritesView';
 import MockInterviewView from './components/MockInterviewView';
 import MockHistoryList from './components/MockHistoryList';
-import { generateAnalysis, generateQuestions } from './services/geminiService';
 import { SparklesIcon, BookIcon, HeartIcon, ClockIcon, FerryIcon } from './components/Icons';
 
-const App: React.FC = () => {
+const FerryApp: React.FC = () => {
   const [state, setState] = useState<AppState>({
     view: AppView.INPUT,
     profile: { targetMajor: '', targetUni: '', resumeText: '', resumeFile: null },
@@ -23,37 +23,42 @@ const App: React.FC = () => {
 
   const handleStartAnalysis = async (profile: UserProfile) => {
     setState(prev => ({ ...prev, isAnalyzing: true, profile }));
-    
-    // Create the input object for the service
-    const resumeInput = {
-        text: profile.resumeText,
-        file: profile.resumeFile
-    };
 
     try {
-      // 1. Generate Analysis & Intros
-      const analysisData = await generateAnalysis(resumeInput, profile.targetMajor, profile.targetUni);
-      
-      setState(prev => ({ 
-        ...prev, 
-        analysis: analysisData, 
+      // Call our own backend API route
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          resumeText: profile.resumeText,
+          targetMajor: profile.targetMajor,
+          targetUni: profile.targetUni,
+        }),
+      });
+
+      if (!response.ok) {
+        // You can get more specific error messages from the backend if you send them
+        const errorData = await response.json();
+        throw new Error(errorData.message || `API call failed with status: ${response.status}`);
+      }
+
+      const { analysis, questions } = await response.json();
+
+      // Update state in one go with data from the backend
+      setState(prev => ({
+        ...prev,
+        analysis,
+        questions,
         view: AppView.ANALYSIS,
         isAnalyzing: false,
-        isGeneratingQuestions: true // Start questions in background
-      }));
-
-      // 2. Generate Questions (Lazy load or immediately after)
-      const qData = await generateQuestions(resumeInput, profile.targetMajor, profile.targetUni);
-      setState(prev => ({ 
-        ...prev, 
-        questions: qData,
-        isGeneratingQuestions: false
       }));
 
     } catch (error) {
       console.error(error);
       alert("AI 服务暂时繁忙或遇到错误，请稍后重试。");
-      setState(prev => ({ ...prev, isAnalyzing: false, isGeneratingQuestions: false }));
+      setState(prev => ({ ...prev, isAnalyzing: false }));
     }
   };
 
@@ -210,4 +215,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default FerryApp;
