@@ -3,7 +3,7 @@ import { GoogleGenAI, Schema, Type, Modality, GenerateContentResponse } from "@g
 import { AnalysisResult, QuestionItem, QuestionCategory } from "../types";
 
 // Helper to ensure we always get a fresh client with the latest API Key
-const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAiClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Retry helper
 async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
